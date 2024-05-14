@@ -1,23 +1,28 @@
-import { Codes } from '../config/codes';
+import { Socket } from 'net';
+import { decodeMessage } from '../encoding/encoding';
 import { Request } from '../models/request';
-import { encodeMessage, decodeMessage } from '../encoding/encoding';
-require("dotenv").config();
-const crypto = require('crypto');
+import { handleRequest } from './requests';
+import { Codes } from '../config/codes';
 
-export function handleRequest(request: Request) {
-  if (request.type === Codes.PASSWORD) {
-    return checkPassword(request.payload);
-  } else {
-    return encodeMessage(Codes.ERROR, 'Unhandled request type');
-  }
+export function processClientData(socket: Socket, data: Buffer) {
+    try {
+        const decoded = decodeMessage(data);
+        const request = new Request(decoded.type, decoded.payload);
+        const messageBuffer = handleRequest(request);
+        const decodedBuffer = decodeMessage(messageBuffer);
+        
+        handleResponse(socket, messageBuffer, decodedBuffer);
+    } catch (error) {
+        console.error('Error processing data:', error);
+        socket.end();
+    }
 }
 
-function checkPassword(password: String){
-  if(password === process.env.PASSWORD) {
-    const clientId = crypto.randomUUID();
-    return encodeMessage(Codes.ID_CREATION, clientId);
-  } else {
-    return encodeMessage(Codes.ERROR, 'Invalid password');
-  }
+export function handleResponse(socket: Socket, messageBuffer: Buffer, decodedBuffer: any) {
+    if (messageBuffer[0] === Codes.ERROR) {
+        console.log(`Error detected: ${decodedBuffer.payload}, disconnecting client.`);
+        socket.write(messageBuffer, () => socket.end());
+    } else {
+        socket.write(messageBuffer);
+    }
 }
-

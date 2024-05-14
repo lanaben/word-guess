@@ -1,25 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleRequest = void 0;
-const codes_1 = require("../config/codes");
+exports.handleResponse = exports.processClientData = void 0;
 const encoding_1 = require("../encoding/encoding");
-require("dotenv").config();
-const crypto = require('crypto');
-function handleRequest(request) {
-    if (request.type === codes_1.Codes.PASSWORD) {
-        return checkPassword(request.payload);
+const request_1 = require("../models/request");
+const requests_1 = require("./requests");
+const codes_1 = require("../config/codes");
+function processClientData(socket, data) {
+    try {
+        const decoded = (0, encoding_1.decodeMessage)(data);
+        const request = new request_1.Request(decoded.type, decoded.payload);
+        const messageBuffer = (0, requests_1.handleRequest)(request);
+        const decodedBuffer = (0, encoding_1.decodeMessage)(messageBuffer);
+        handleResponse(socket, messageBuffer, decodedBuffer);
     }
-    else {
-        return (0, encoding_1.encodeMessage)(codes_1.Codes.ERROR, 'Unhandled request type');
-    }
-}
-exports.handleRequest = handleRequest;
-function checkPassword(password) {
-    if (password === process.env.PASSWORD) {
-        const clientId = crypto.randomUUID();
-        return (0, encoding_1.encodeMessage)(codes_1.Codes.ID_CREATION, clientId);
-    }
-    else {
-        return (0, encoding_1.encodeMessage)(codes_1.Codes.ERROR, 'Invalid password');
+    catch (error) {
+        console.error('Error processing data:', error);
+        socket.end();
     }
 }
+exports.processClientData = processClientData;
+function handleResponse(socket, messageBuffer, decodedBuffer) {
+    if (messageBuffer[0] === codes_1.Codes.ERROR) {
+        console.log(`Error detected: ${decodedBuffer.payload}, disconnecting client.`);
+        socket.write(messageBuffer, () => socket.end());
+    }
+    else {
+        socket.write(messageBuffer);
+    }
+}
+exports.handleResponse = handleResponse;
