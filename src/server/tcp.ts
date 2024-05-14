@@ -2,19 +2,26 @@ import { createServer, Socket } from 'net';
 import { encodeMessage, decodeMessage } from '../encoding/encoding';
 import { Codes } from '../config/codes';
 import { processClientData } from './handling';
+import Client from '../models/client';
 
 const PORT = 1234;
+const clientRegistry = new Map<string, Client>();
 
 const server = createServer((socket: Socket) => {
+    const client = new Client(socket);  
     console.log('Client connected.');
 
     const initMessage = encodeMessage(Codes.INITIALIZATION, "halo");
     socket.write(initMessage);
 
-    socket.on('data', data => processClientData(socket, data));
+    socket.on('data', data => processClientData(client, data, clientRegistry));
 
     socket.on('close', () => {
-        console.log('Connection closed.');
+        if (client.id) {
+            console.log(`Connection closed. Removing client: ${client.id}`);
+            clientRegistry.delete(client.id);
+            client.disconnect();
+        }
     });
 });
 

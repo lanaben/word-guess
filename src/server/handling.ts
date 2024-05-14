@@ -3,18 +3,17 @@ import { decodeMessage } from '../encoding/encoding';
 import { Request } from '../models/request';
 import { handleRequest } from './requests';
 import { Codes } from '../config/codes';
+import Client from '../models/client';
 
-export function processClientData(socket: Socket, data: Buffer) {
+export function processClientData(client: Client, data: Buffer, clientRegistry: Map<string, Client>) {
     try {
         const decoded = decodeMessage(data);
         const request = new Request(decoded.type, decoded.payload);
-        const messageBuffer = handleRequest(request);
-        const decodedBuffer = decodeMessage(messageBuffer);
-        
-        handleResponse(socket, messageBuffer, decodedBuffer);
+        const messageBuffer = handleRequest(request, client, clientRegistry);
+        client.sendMessage(messageBuffer.toString());
     } catch (error) {
         console.error('Error processing data:', error);
-        socket.end();
+        client.disconnect();
     }
 }
 

@@ -2,5 +2,9 @@ export enum Codes {
   INITIALIZATION = 0x01,
   PASSWORD = 0x02,
   ID_CREATION = 0x03,
+  ID_LIST_REQUEST = 0x04,
+  ID_LIST = 0x05,
+  ID_AND_WORD = 0x06,
+  GAME_STARTED = 0x07,
   ERROR = 0x11
 }

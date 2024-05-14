@@ -1,5 +1,3 @@
-import { Codes } from "../config/codes";
-
 export class Request {
   type: number;
   payload: any;
