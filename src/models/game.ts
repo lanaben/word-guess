@@ -1,10 +1,11 @@
 import { randomUUID } from 'crypto';
 import { Codes } from '../config/codes';  // Ensure you have appropriate Codes defined.
+import Client from './client';
 
 export class Game {
   id: string;
-  leadingPlayer: string;
-  guessingPlayer: string;
+  leadingPlayer: Client;
+  guessingPlayer: Client;
   winningWord: string;
   guesses: string[] = [];
   hints: string[] = [];
@@ -12,7 +13,7 @@ export class Game {
   startTime: Date;
   endTime?: Date;
 
-  constructor(leadingPlayer: string, guessingPlayer: string, winningWord: string) {
+  constructor(leadingPlayer: Client, guessingPlayer: Client, winningWord: string) {
     this.id = randomUUID(); 
     this.leadingPlayer = leadingPlayer;
     this.guessingPlayer = guessingPlayer;
