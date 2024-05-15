@@ -7,15 +7,15 @@ import { Game } from '../models/game';
 require("dotenv").config();
 const crypto = require('crypto');
 
-export function handleRequest(request: Request, client: Client, clientRegistry: Map<string, Client>) {
+export function handleRequest(request: Request, client: Client, clientRegistry: Map<string, Client>, gameSessions: Map<string, Game>) {
   
   if(request.type == Codes.PASSWORD) {
     console.log("Checking password..")
     return checkPassword(request.payload, client, clientRegistry);
   }
   
-  if (!client.isAuthenticated) {
-    return encodeMessage(Codes.ERROR, 'Not authenticated');
+  if (!client.isAuthenticated || client.id === null) {
+    return encodeMessage(Codes.ERROR, 'Not authenticated or Client ID is null');
   }
   
   switch (request.type) {
@@ -24,27 +24,36 @@ export function handleRequest(request: Request, client: Client, clientRegistry: 
       return encodeMessage(Codes.ID_LIST, '', clientIds);
 
     case Codes.ID_AND_WORD:
-      if (client.id === null) {
-          return encodeMessage(Codes.ERROR, 'Client ID is null');
+        const parts = request.payload.split(',');
+        if (parts.length < 2) {
+            return encodeMessage(Codes.ERROR, 'Invalid payload format');
+        }
+        const [opponentId, word] = parts;
+        console.log(`Creating game with opponent ID: ${opponentId} and word: ${word}`);
+        return createGame(client.id, opponentId, word, clientRegistry, gameSessions);
+    
+    case Codes.GUESS:
+      if (!client.activeGameId) {
+        return encodeMessage(Codes.ERROR, 'Client is not currently in a game');
       }
-
-      const parts = request.payload.split(',');
-      if (parts.length < 2) {
-          return encodeMessage(Codes.ERROR, 'Invalid payload format');
-      }
-
-      const opponentId = parts[0];
-      const word = parts[1];
-
-      console.log(`Creating game with opponent ID: ${opponentId} and word: ${word}`);
-      const game = createGame(client.id, opponentId, word, clientRegistry);
+      
+      const game = gameSessions.get(client.activeGameId);
       if (!game) {
-          return encodeMessage(Codes.ERROR, 'Failed to create game');
+        return encodeMessage(Codes.ERROR, 'Game not found');
       }
     
-      console.log("Game created successfully.");
-      return encodeMessage(Codes.GAME_STARTED, 'Game created successfully');
-      
+      return handleGuess(request.payload, game, clientRegistry);
+      case Codes.HINT:
+        if (!client.activeGameId) {
+          return encodeMessage(Codes.ERROR, 'Client is not currently in a game');
+        }
+        
+        const hintGame = gameSessions.get(client.activeGameId);
+        if (!hintGame) {
+          return encodeMessage(Codes.ERROR, 'Game not found');
+        }
+        
+        return sendHint(request.payload, hintGame, clientRegistry);
     default:
       return encodeMessage(Codes.ERROR, 'Unhandled request type');
   }
@@ -63,25 +72,81 @@ function checkPassword(password: string, client: Client, clientRegistry: Map<str
   }
 }
 
-function createGame(player1Id: string, player2Id: string, winningWord: string, clientRegistry: Map<string, Client>): Game | null {
-  
-  const player1 = clientRegistry.get(player1Id);
-  const player2 = clientRegistry.get(player2Id);
-  
-  if (!player1 || !player2) {
-      clientRegistry.forEach((client, clientId) => {
-          console.log(`Client ID: ${clientId}, Is Authenticated: ${client.isAuthenticated}`);
-      });
-      return null;
+function createGame(leadingPlayerId: string, guessingPlayerId: string, winningWord: string, clientRegistry: Map<string, Client>, gameSessions: Map<string, Game>) {
+  const leadingPlayer = clientRegistry.get(leadingPlayerId);
+  const guessingPlayer = clientRegistry.get(guessingPlayerId);
+
+  if (!leadingPlayer || !guessingPlayer) {
+      return encodeMessage(Codes.ERROR, 'One or both players not found');
   }
 
-  const game = new Game(player1Id, player2Id, winningWord);
+  const game = new Game(leadingPlayerId, guessingPlayerId, winningWord);
+  gameSessions.set(game.id, game);
 
-  const gameStartMessage = encodeMessage(Codes.GAME_STARTED, 'Game has started');
-  player1.sendMessage(gameStartMessage.toString());
-  player2.sendMessage(gameStartMessage.toString());
+  leadingPlayer.activeGameId = game.id;
+  guessingPlayer.activeGameId = game.id;
+
+  const startMessages: [Client, Codes, string][] = [
+    [leadingPlayer, Codes.GAME_STARTED_LEADING, 'Game has started'],
+    [guessingPlayer, Codes.GAME_STARTED_GUESSING, 'Game has started. Start guessing!']
+  ];
+
+  startMessages.forEach(([player, code, message]) => {
+    try {
+      player.sendMessage(encodeMessage(code, message).toString());
+    } catch (error) {
+      console.error(`Error sending message to player ${player.id}:`, error);
+    }
+  });
 
   console.log("Game created and start message sent to both players.");
-  return game;
+  return encodeMessage(Codes.GAME_STARTED_LEADING, 'Game created successfully');
 }
 
+
+function handleGuess(guess: string, game: Game, clientRegistry: Map<string, Client>) {
+  if (!game.isActive) {
+    return encodeMessage(Codes.ERROR, 'Game is not active');
+  }
+
+  const leadingPlayer = clientRegistry.get(game.leadingPlayer);
+  const guessingPlayer = clientRegistry.get(game.guessingPlayer);
+
+  if (!leadingPlayer || !guessingPlayer) {
+    return encodeMessage(Codes.ERROR, 'One of the players not found');
+  }
+
+  const result = game.makeGuess(guess);
+  console.log(result)
+
+  if (result.correct) {
+    const messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'WORD GUESSED!');
+    leadingPlayer.sendMessage(messageGameEnded.toString());
+    guessingPlayer.sendMessage(messageGameEnded.toString());
+    return encodeMessage(Codes.GUESS_CORRECT, 'Correct guess!');
+  } else {
+    const errorMsg = encodeMessage(Codes.GUESS_WRONG, 'Wrong guess. Try again!');
+    const hintMsg = encodeMessage(Codes.HINT_REQUEST, 'Wrong guess. Give a hint!');
+    guessingPlayer.sendMessage(errorMsg.toString());
+    leadingPlayer.sendMessage(hintMsg.toString());
+    return errorMsg;
+  }
+}
+
+function sendHint(hint: string, game: Game, clientRegistry: Map<string, Client>){
+  if (!game.isActive) {
+    return encodeMessage(Codes.ERROR, 'Game is not active');
+  }
+
+  const leadingPlayer = clientRegistry.get(game.leadingPlayer);
+  const guessingPlayer = clientRegistry.get(game.guessingPlayer);
+
+  if (!leadingPlayer || !guessingPlayer) {
+    return encodeMessage(Codes.ERROR, 'One of the players not found');
+  }
+  const messageHint = encodeMessage(Codes.HINT_RECEIVED, 'You got a hint:' + hint);
+  guessingPlayer.sendMessage(messageHint.toString());
+  const hintMsg = encodeMessage(Codes.HINT_SENT, 'Hint sent!');
+  leadingPlayer.sendMessage(hintMsg.toString());
+  return hintMsg;
+}

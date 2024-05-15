@@ -37,6 +37,24 @@ function handleData(data: Buffer) {
         case Codes.ID_LIST:
             handleIdList(payload);
             break;
+        case Codes.GAME_STARTED_GUESSING || Codes.GAME_STARTED_LEADING:
+            startGuessing();
+            break;
+        case Codes.GUESS_WRONG:
+            promptForGuessAgain();
+            break;
+        case Codes.GUESS_CORRECT:
+            endGame();
+            break;
+        case Codes.HINT_REQUEST:
+            promptForHint();
+            break;
+        case Codes.HINT_RECEIVED:
+            startGuessing();
+            break;
+        case Codes.HINT_SENT:
+            hintSent();
+            break;
         default:
             console.log('Unknown message type received.');
             break;
@@ -72,7 +90,39 @@ function promptForId(idList: string[]) {
         rl.question('Enter a word to send with the ID: ', (word) => {
             const message = encodeMessage(Codes.ID_AND_WORD, '', [chosenId, word]);
             client.write(message);
-            rl.close();
         });
     });
+}
+
+function startGuessing() {
+    console.log('Start guessing!');
+    rl.question('Enter your guess: ', (guess) => {
+        const message = encodeMessage(Codes.GUESS, guess);
+        client.write(message);
+        console.log('Guess sent:', guess);
+    });
+}
+
+function promptForHint() {
+    rl.question('Enter a hint for the guessing player: ', (hint) => {
+        const message = encodeMessage(Codes.HINT, hint);
+        client.write(message);
+        console.log('Hint sent:', hint);
+    });
+}
+
+function promptForGuessAgain() {
+    rl.question('Enter your guess: ', (guess) => {
+        const message = encodeMessage(Codes.GUESS, guess);
+        client.write(message);
+        console.log('Guess sent:', guess);
+    });
+}
+
+function hintSent() {
+        console.log('Hint sent:');
+}
+
+function endGame() {
+    console.log('Game has ended, word was guessed.');
 }

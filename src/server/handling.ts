@@ -4,12 +4,13 @@ import { Request } from '../models/request';
 import { handleRequest } from './requests';
 import { Codes } from '../config/codes';
 import Client from '../models/client';
+import { Game } from '../models/game';
 
-export function processClientData(client: Client, data: Buffer, clientRegistry: Map<string, Client>) {
+export function processClientData(client: Client, data: Buffer, clientRegistry: Map<string, Client>, gameSessions: Map<string, Game>) {
     try {
         const decoded = decodeMessage(data);
         const request = new Request(decoded.type, decoded.payload);
-        const messageBuffer = handleRequest(request, client, clientRegistry);
+        const messageBuffer = handleRequest(request, client, clientRegistry, gameSessions);
         client.sendMessage(messageBuffer.toString());
     } catch (error) {
         console.error('Error processing data:', error);

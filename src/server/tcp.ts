@@ -3,9 +3,11 @@ import { encodeMessage, decodeMessage } from '../encoding/encoding';
 import { Codes } from '../config/codes';
 import { processClientData } from './handling';
 import Client from '../models/client';
+import { Game } from '../models/game';
 
 const PORT = 1234;
 const clientRegistry = new Map<string, Client>();
+const gameSessions = new Map<string, Game>();
 
 const server = createServer((socket: Socket) => {
     const client = new Client(socket);  
@@ -14,7 +16,7 @@ const server = createServer((socket: Socket) => {
     const initMessage = encodeMessage(Codes.INITIALIZATION, "halo");
     socket.write(initMessage);
 
-    socket.on('data', data => processClientData(client, data, clientRegistry));
+    socket.on('data', data => processClientData(client, data, clientRegistry, gameSessions));
 
     socket.on('close', () => {
         if (client.id) {
