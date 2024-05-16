@@ -5,6 +5,8 @@ import { processClientData } from './handling';
 import Client from '../models/client';
 import { Game } from '../models/game';
 
+//TODO: unix socket, webpage tracking games
+
 const PORT = 1234;
 const clientRegistry = new Map<string, Client>();
 const gameSessions = new Map<string, Game>();
@@ -14,7 +16,7 @@ const server = createServer((socket: Socket) => {
     console.log('Client connected.');
 
     const initMessage = encodeMessage(Codes.INITIALIZATION, "Connected.");
-    client.sendMessage(initMessage);
+    socket.write(initMessage);
 
     socket.on('data', data => processClientData(client, data, clientRegistry, gameSessions));
 

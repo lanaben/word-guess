@@ -4,10 +4,10 @@ import { Codes } from '../config/codes';
 import readline from 'readline';
 
 const PORT = 1234;
-const HOST = 'localhost';
+const HOST = '127.0.0.1';
 const client = new Socket();
-let idRequestSent = false;
 let clientId = '';
+let choosingOpponent = false;
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -34,7 +34,8 @@ function handleData(data: Buffer) {
             handleInitialization(payload);
             break;
         case Codes.ID_CREATION:
-            requestIdList(payload);
+            clientId = payload; 
+            askToChooseOpponent();
             break;
         case Codes.ID_LIST:
             handleIdList(payload);
@@ -48,17 +49,8 @@ function handleData(data: Buffer) {
         case Codes.HINT_RECEIVED:
             guessing();
             break;
-        case Codes.GUESS_CORRECT:
-            endGame();
-            break;
         case Codes.HINT_REQUEST:
             promptForHint();
-            break;
-        case Codes.HINT_SENT:
-            hintSent();
-            break;
-        default:
-            console.log(payload);
             break;
     }
 }
@@ -70,12 +62,15 @@ function handleInitialization(payload: string) {
     client.write(passwordBuffer);
 }
 
-function requestIdList(payload: string) {
-    clientId = payload;
-    if (!idRequestSent) {
-        client.write(encodeMessage(Codes.ID_LIST_REQUEST));
-        idRequestSent = true;
-    }
+function askToChooseOpponent() {
+    rl.question('Do you want to choose an opponent? (yes/no) ', (answer) => {
+        if (answer.toLowerCase() === 'yes') {
+            client.write(encodeMessage(Codes.ID_LIST_REQUEST));
+            choosingOpponent = true;
+        } else {
+            console.log('Connected without choosing an opponent.');
+        }
+    });
 }
 
 function handleIdList(payload: string) {
@@ -93,15 +88,21 @@ function promptForId(idList: string[]) {
         rl.question('Enter a word to send with the ID: ', (word) => {
             const message = encodeMessage(Codes.ID_AND_WORD, '', [chosenId, word]);
             client.write(message);
+            choosingOpponent = false;
         });
     });
 }
 
 function guessing() {
     rl.question('Enter your guess: ', (guess) => {
-        const message = encodeMessage(Codes.GUESS, guess);
+        let message;
+        if (parseInt(guess) === 17) {
+            message = encodeMessage(Codes.GIVE_UP);
+        } else {
+            message = encodeMessage(Codes.GUESS, guess);
+        }
         client.write(message);
-        console.log('Guess sent:', guess);
+        console.log('Message sent:', guess === '17' ? 'GIVE_UP' : guess);
     });
 }
 
@@ -109,14 +110,6 @@ function promptForHint() {
     rl.question('Enter a hint for the guessing player: ', (hint) => {
         const message = encodeMessage(Codes.HINT, hint);
         client.write(message);
-        console.log('Hint sent:', hint);
     });
 }
 
-function hintSent() {
-        console.log('Hint sent:');
-}
-
-function endGame() {
-    console.log('Game has ended, word was guessed.');
-}

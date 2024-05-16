@@ -35,7 +35,6 @@ export class Game {
     this.guesses.push(guess);
 
     if (guess === this.winningWord) {
-      this.endGame();
       return { correct: true, message: "Correct guess!", code: Codes.GUESS_CORRECT };
     }
     return { correct: false, message: "Wrong guess. Try again!", code: Codes.GUESS_WRONG };
@@ -56,8 +55,13 @@ export class Game {
     return this.guesses;
   }
 
-  endGame(): void {
-    const messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'WORD GUESSED!');
+  endGame(giveUp: boolean): void {
+    let messageGameEnded;
+    if (giveUp) {
+      messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'Guessing player gave up!');
+    } else {
+      messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'WORD GUESSED!');
+    }
     this.leadingPlayer.sendMessage(messageGameEnded);
     this.guessingPlayer.sendMessage(messageGameEnded);
     this.isActive = false;
