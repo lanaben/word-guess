@@ -13,7 +13,7 @@ class Client {
         this.activeGameId = null;
     }
 
-    sendMessage(message: string): void {
+    sendMessage(message: Buffer): void {
         try {
             this.socket.write(message);
         } catch (error) {

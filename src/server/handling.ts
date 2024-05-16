@@ -11,18 +11,16 @@ export function processClientData(client: Client, data: Buffer, clientRegistry: 
         const decoded = decodeMessage(data);
         const request = new Request(decoded.type, decoded.payload);
         const messageBuffer = handleRequest(request, client, clientRegistry, gameSessions);
-        client.sendMessage(messageBuffer.toString());
+
+        if (messageBuffer[0] === Codes.ERROR) {
+            console.log(`Error detected: ${decoded.payload}, disconnecting client.`);
+            client.sendMessage(messageBuffer);
+            client.disconnect();
+        } else {
+            client.sendMessage(messageBuffer);
+        }
     } catch (error) {
         console.error('Error processing data:', error);
         client.disconnect();
-    }
-}
-
-export function handleResponse(socket: Socket, messageBuffer: Buffer, decodedBuffer: any) {
-    if (messageBuffer[0] === Codes.ERROR) {
-        console.log(`Error detected: ${decodedBuffer.payload}, disconnecting client.`);
-        socket.write(messageBuffer, () => socket.end());
-    } else {
-        socket.write(messageBuffer);
     }
 }

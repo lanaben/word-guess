@@ -7,6 +7,8 @@ const PORT = 1234;
 const HOST = 'localhost';
 const client = new Socket();
 let idRequestSent = false;
+let clientId = '';
+
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -25,23 +27,26 @@ function setupClientListeners() {
 
 function handleData(data: Buffer) {
     const { type, payload } = decodeMessage(data);
-    console.log(`Received response from server - Type: ${type}, Payload: ${payload}`);
+    console.log(payload)
 
     switch (type) {
         case Codes.INITIALIZATION:
             handleInitialization(payload);
             break;
         case Codes.ID_CREATION:
-            requestIdList();
+            requestIdList(payload);
             break;
         case Codes.ID_LIST:
             handleIdList(payload);
             break;
         case Codes.GAME_STARTED_GUESSING || Codes.GAME_STARTED_LEADING:
-            startGuessing();
+            guessing();
             break;
         case Codes.GUESS_WRONG:
-            promptForGuessAgain();
+            guessing();
+            break;
+        case Codes.HINT_RECEIVED:
+            guessing();
             break;
         case Codes.GUESS_CORRECT:
             endGame();
@@ -49,14 +54,11 @@ function handleData(data: Buffer) {
         case Codes.HINT_REQUEST:
             promptForHint();
             break;
-        case Codes.HINT_RECEIVED:
-            startGuessing();
-            break;
         case Codes.HINT_SENT:
             hintSent();
             break;
         default:
-            console.log('Unknown message type received.');
+            console.log(payload);
             break;
     }
 }
@@ -68,7 +70,8 @@ function handleInitialization(payload: string) {
     client.write(passwordBuffer);
 }
 
-function requestIdList() {
+function requestIdList(payload: string) {
+    clientId = payload;
     if (!idRequestSent) {
         client.write(encodeMessage(Codes.ID_LIST_REQUEST));
         idRequestSent = true;
@@ -76,9 +79,9 @@ function requestIdList() {
 }
 
 function handleIdList(payload: string) {
-    const idList = payload.split(',');
-    if (idList.length > 1) {
-        console.log('Received list of IDs:', payload);
+    const idList = payload.split(',').filter(id => id.trim() !== '' && id !== clientId);
+    if (idList.length > 0) {
+        console.log('Received list of IDs:', idList.join(', '));
         promptForId(idList);
     } else {
         console.log('Not enough opponents to start a game.');
@@ -94,8 +97,7 @@ function promptForId(idList: string[]) {
     });
 }
 
-function startGuessing() {
-    console.log('Start guessing!');
+function guessing() {
     rl.question('Enter your guess: ', (guess) => {
         const message = encodeMessage(Codes.GUESS, guess);
         client.write(message);
@@ -108,14 +110,6 @@ function promptForHint() {
         const message = encodeMessage(Codes.HINT, hint);
         client.write(message);
         console.log('Hint sent:', hint);
-    });
-}
-
-function promptForGuessAgain() {
-    rl.question('Enter your guess: ', (guess) => {
-        const message = encodeMessage(Codes.GUESS, guess);
-        client.write(message);
-        console.log('Guess sent:', guess);
     });
 }
 

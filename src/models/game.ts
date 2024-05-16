@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
-import { Codes } from '../config/codes';  // Ensure you have appropriate Codes defined.
+import { Codes } from '../config/codes';
 import Client from './client';
+import { encodeMessage } from '../encoding/encoding';
 
 export class Game {
   id: string;
@@ -24,15 +25,17 @@ export class Game {
 
   makeGuess(guess: string): { correct: boolean, message: string, code: Codes } {
     if (!this.isActive) {
-      throw new Error("Game is not active");
+      return { correct: false, message: "Game is not active!", code: Codes.ERROR };
+    }
+
+    if (!this.leadingPlayer || !this.guessingPlayer) {
+      return { correct: false, message: "One of the players not found!", code: Codes.ERROR };
     }
 
     this.guesses.push(guess);
-    console.log(guess);
-    console.log(this.winningWord);
+
     if (guess === this.winningWord) {
-      this.isActive = false;
-      this.endTime = new Date();
+      this.endGame();
       return { correct: true, message: "Correct guess!", code: Codes.GUESS_CORRECT };
     }
     return { correct: false, message: "Wrong guess. Try again!", code: Codes.GUESS_WRONG };
@@ -54,7 +57,12 @@ export class Game {
   }
 
   endGame(): void {
+    const messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'WORD GUESSED!');
+    this.leadingPlayer.sendMessage(messageGameEnded);
+    this.guessingPlayer.sendMessage(messageGameEnded);
     this.isActive = false;
     this.endTime = new Date();
+    this.guessingPlayer.disconnect();
+    this.leadingPlayer.disconnect();
   }
 }

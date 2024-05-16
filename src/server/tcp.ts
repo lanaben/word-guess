@@ -13,8 +13,8 @@ const server = createServer((socket: Socket) => {
     const client = new Client(socket);  
     console.log('Client connected.');
 
-    const initMessage = encodeMessage(Codes.INITIALIZATION, "halo");
-    socket.write(initMessage);
+    const initMessage = encodeMessage(Codes.INITIALIZATION, "Connected.");
+    client.sendMessage(initMessage);
 
     socket.on('data', data => processClientData(client, data, clientRegistry, gameSessions));
 

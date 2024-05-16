@@ -7,7 +7,7 @@ import { Game } from '../models/game';
 require("dotenv").config();
 const crypto = require('crypto');
 
-//TODO: offer clients that are not in clientRegistry to start game, check handleGuess messages, prettier logs on client/server
+//TODO: check handleGuess messages, prettier logs on client/server, give up, disconnect when done
 
 export function handleRequest(request: Request, client: Client, clientRegistry: Map<string, Client>, gameSessions: Map<string, Game>) {
   
@@ -22,7 +22,7 @@ export function handleRequest(request: Request, client: Client, clientRegistry: 
   
   switch (request.type) {
     case Codes.ID_LIST_REQUEST:
-      const clientIds = Array.from(clientRegistry.keys());
+      const clientIds = Array.from(clientRegistry.keys()).filter(id => id !== client.id);
       return encodeMessage(Codes.ID_LIST, '', clientIds);
 
     case Codes.ID_AND_WORD:
@@ -50,7 +50,7 @@ export function handleRequest(request: Request, client: Client, clientRegistry: 
         return encodeMessage(Codes.ERROR, 'Game not found');
       }
         
-      return sendHint(request.payload, hintGame, clientRegistry);
+      return sendHint(request.payload, hintGame);
     default:
       return encodeMessage(Codes.ERROR, 'Unhandled request type');
   }
@@ -81,7 +81,7 @@ function handleIdAndWord(request: Request, client: Client, clientRegistry: Map<s
     return encodeMessage(Codes.ERROR, 'Opponent not found');
   }
 
-  console.log(`Creating game with opponent ID: ${opponentId} and word: ${word}`);
+  console.log(`Creating game with opponents: ${opponentId}, ${client.id} and word: ${word}`);
   return createGame(client, guessingPlayer, word, gameSessions);
 }
 
@@ -96,18 +96,8 @@ function createGame(leadingPlayer: Client, guessingPlayer: Client, winningWord: 
   leadingPlayer.activeGameId = game.id;
   guessingPlayer.activeGameId = game.id;
 
-  const startMessages: [Client, Codes, string][] = [
-    [leadingPlayer, Codes.GAME_STARTED_LEADING, 'Game has started'],
-    [guessingPlayer, Codes.GAME_STARTED_GUESSING, 'Game has started. Start guessing!']
-  ];
-
-  startMessages.forEach(([player, code, message]) => {
-    try {
-      player.sendMessage(encodeMessage(code, message).toString());
-    } catch (error) {
-      console.error(`Error sending message to player ${player.id}:`, error);
-    }
-  });
+  const startMessage = encodeMessage(Codes.GAME_STARTED_GUESSING, 'Game has started. Start guessing!');
+  guessingPlayer.sendMessage(startMessage);
 
   console.log("Game created and start message sent to both players.");
   return encodeMessage(Codes.GAME_STARTED_LEADING, 'Game created successfully');
@@ -124,23 +114,17 @@ function handleGuess(guess: string, game: Game) {
   }
 
   const result = game.makeGuess(guess);
-  console.log(result)
 
   if (result.correct) {
-    const messageGameEnded = encodeMessage(Codes.GUESS_CORRECT, 'WORD GUESSED!');
-    game.leadingPlayer.sendMessage(messageGameEnded.toString());
-    game.guessingPlayer.sendMessage(messageGameEnded.toString());
-    return encodeMessage(Codes.GUESS_CORRECT, 'Correct guess!');
+    game.endGame();
+    return encodeMessage(result.code, result.message);
   } else {
-    const errorMsg = encodeMessage(Codes.GUESS_WRONG, 'Wrong guess. Try again!');
-    const hintMsg = encodeMessage(Codes.HINT_REQUEST, 'Wrong guess. Give a hint!');
-    game.guessingPlayer.sendMessage(errorMsg.toString());
-    game.leadingPlayer.sendMessage(hintMsg.toString());
-    return errorMsg;
+    game.leadingPlayer.sendMessage(encodeMessage(Codes.HINT_REQUEST, `Opponent guesses wrong word: ${guess}. Give a hint!`));
+    return encodeMessage(result.code, result.message);
   }
 }
 
-function sendHint(hint: string, game: Game, clientRegistry: Map<string, Client>){
+function sendHint(hint: string, game: Game){
   if (!game.isActive) {
     return encodeMessage(Codes.ERROR, 'Game is not active');
   }
@@ -148,9 +132,11 @@ function sendHint(hint: string, game: Game, clientRegistry: Map<string, Client>)
   if (!game.leadingPlayer || !game.guessingPlayer) {
     return encodeMessage(Codes.ERROR, 'One of the players not found');
   }
+
+  game.addHint(hint);
   const messageHint = encodeMessage(Codes.HINT_RECEIVED, 'You got a hint:' + hint);
-  game.guessingPlayer.sendMessage(messageHint.toString());
+  game.guessingPlayer.sendMessage(messageHint);
   const hintMsg = encodeMessage(Codes.HINT_SENT, 'Hint sent!');
-  game.leadingPlayer.sendMessage(hintMsg.toString());
-  return hintMsg;
+  game.leadingPlayer.sendMessage(hintMsg);
+  return hintMsg;//TODO:fuj
 }
