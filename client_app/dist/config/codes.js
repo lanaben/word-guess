@@ -1,0 +1,24 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Codes = void 0;
+var Codes;
+(function (Codes) {
+    Codes[Codes["INITIALIZATION"] = 1] = "INITIALIZATION";
+    Codes[Codes["PASSWORD"] = 2] = "PASSWORD";
+    Codes[Codes["ID_CREATION"] = 3] = "ID_CREATION";
+    Codes[Codes["ID_LIST_REQUEST"] = 4] = "ID_LIST_REQUEST";
+    Codes[Codes["ID_LIST"] = 5] = "ID_LIST";
+    Codes[Codes["ID_AND_WORD"] = 6] = "ID_AND_WORD";
+    Codes[Codes["GAME_STARTED_LEADING"] = 7] = "GAME_STARTED_LEADING";
+    Codes[Codes["GAME_STARTED_GUESSING"] = 8] = "GAME_STARTED_GUESSING";
+    Codes[Codes["GUESS"] = 9] = "GUESS";
+    Codes[Codes["GUESS_CORRECT"] = 10] = "GUESS_CORRECT";
+    Codes[Codes["GUESS_WRONG"] = 11] = "GUESS_WRONG";
+    Codes[Codes["ERROR"] = 12] = "ERROR";
+    Codes[Codes["HINT_REQUEST"] = 13] = "HINT_REQUEST";
+    Codes[Codes["HINT"] = 14] = "HINT";
+    Codes[Codes["HINT_SENT"] = 15] = "HINT_SENT";
+    Codes[Codes["HINT_RECEIVED"] = 16] = "HINT_RECEIVED";
+    Codes[Codes["GIVE_UP"] = 17] = "GIVE_UP";
+    Codes[Codes["PLAYER"] = 18] = "PLAYER";
+})(Codes || (exports.Codes = Codes = {}));
