@@ -1,15 +1,18 @@
-ENV:
+### ENV:
+
 To both client and server, add variable PASSWORD.
 
-INSTALLATION:
+### INSTALLATION:
 
-Server:
+#### Server:
+
+```bash
 npm i
 npx tsc
 npm run build
 node dist/server/server.js
 
-Client:
+#### Client:
 npm i
 npx tsc
 node dist/client/client.js
