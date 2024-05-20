@@ -6,5 +6,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["src/", "../client_app/src/client", "../client_app/encoding", "../client_app/config"]
+  "include": ["../client_app/"]
 }

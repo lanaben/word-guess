@@ -2,10 +2,13 @@ import { connect, Socket } from 'net';
 import readline from 'readline';
 import { Codes } from '../config/codes';
 import { decodeMessage, encodeMessage } from '../encoding/encoding';
+require("dotenv").config();
 
-const PORT = 1234;
-const HOST = '127.0.0.1';
-const client = new Socket();
+const TCP_PORT = 1234;
+const TCP_HOST = '127.0.0.1';
+const UNIX_SOCKET_PATH = '/tmp/app.socket';
+
+let client: Socket;
 let clientId = '';
 let choosingOpponent = false;
 
@@ -14,10 +17,22 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-client.connect(PORT, HOST, () => {
+function connectToServer(type: 'tcp' | 'unix') {
+    if (type === 'tcp') {
+        client = connect(TCP_PORT, TCP_HOST, handleConnect);
+    } else if (type === 'unix') {
+        client = connect(UNIX_SOCKET_PATH, handleConnect);
+    } else {
+        console.error('Invalid connection type.');
+        rl.close();
+        return;
+    }
+}
+
+function handleConnect() {
     console.log('Connected to server');
     setupClientListeners();
-});
+}
 
 function setupClientListeners() {
     client.on('data', handleData);
@@ -57,7 +72,7 @@ function handleData(data: Buffer) {
 
 function handleInitialization(payload: string) {
     console.log('Received initiation from server:', payload);
-    const password = "pass";
+    const password = process.env.PASSWORD;
     const passwordBuffer = encodeMessage(Codes.PASSWORD, password);
     client.write(passwordBuffer);
 }
@@ -94,7 +109,7 @@ function promptForId(idList: string[]) {
 }
 
 function guessing() {
-    rl.question('Enter your guess: ', (guess) => {
+    rl.question('Enter your guess. If you want to give up, write the number 17: ', (guess) => {
         let message;
         if (parseInt(guess) === 17) {
             message = encodeMessage(Codes.GIVE_UP);
@@ -113,3 +128,6 @@ function promptForHint() {
     });
 }
 
+rl.question('Choose connection type (tcp/unix): ', (answer) => {
+    connectToServer(answer.toLowerCase() === 'tcp' ? 'tcp' : 'unix');
+});

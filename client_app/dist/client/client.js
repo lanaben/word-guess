@@ -7,19 +7,34 @@ const net_1 = require("net");
 const readline_1 = __importDefault(require("readline"));
 const codes_1 = require("../config/codes");
 const encoding_1 = require("../encoding/encoding");
-const PORT = 1234;
-const HOST = '127.0.0.1';
-const client = new net_1.Socket();
+require("dotenv").config();
+const TCP_PORT = 1234;
+const TCP_HOST = '127.0.0.1';
+const UNIX_SOCKET_PATH = '/tmp/app.socket';
+let client;
 let clientId = '';
 let choosingOpponent = false;
 const rl = readline_1.default.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-client.connect(PORT, HOST, () => {
+function connectToServer(type) {
+    if (type === 'tcp') {
+        client = (0, net_1.connect)(TCP_PORT, TCP_HOST, handleConnect);
+    }
+    else if (type === 'unix') {
+        client = (0, net_1.connect)(UNIX_SOCKET_PATH, handleConnect);
+    }
+    else {
+        console.error('Invalid connection type.');
+        rl.close();
+        return;
+    }
+}
+function handleConnect() {
     console.log('Connected to server');
     setupClientListeners();
-});
+}
 function setupClientListeners() {
     client.on('data', handleData);
     client.on('close', () => console.log('Connection closed'));
@@ -55,7 +70,7 @@ function handleData(data) {
 }
 function handleInitialization(payload) {
     console.log('Received initiation from server:', payload);
-    const password = "pass";
+    const password = process.env.PASSWORD;
     const passwordBuffer = (0, encoding_1.encodeMessage)(codes_1.Codes.PASSWORD, password);
     client.write(passwordBuffer);
 }
@@ -90,7 +105,7 @@ function promptForId(idList) {
     });
 }
 function guessing() {
-    rl.question('Enter your guess: ', (guess) => {
+    rl.question('Enter your guess. If you want to give up, write the number 17: ', (guess) => {
         let message;
         if (parseInt(guess) === 17) {
             message = (0, encoding_1.encodeMessage)(codes_1.Codes.GIVE_UP);
@@ -108,3 +123,6 @@ function promptForHint() {
         client.write(message);
     });
 }
+rl.question('Choose connection type (tcp/unix): ', (answer) => {
+    connectToServer(answer.toLowerCase() === 'tcp' ? 'tcp' : 'unix');
+});
