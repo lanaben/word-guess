@@ -44,39 +44,39 @@ tcpServer.listen(TCP_PORT, () => {
 });
 
 
-// // UNIX Server Configuration
-// const unixServer = createServer((socket: Socket) => {
-//     const client = new Client(socket);  
-//     console.log('UNIX Client connected.');
+// UNIX Server Configuration
+const unixServer = createServer((socket: Socket) => {
+    const client = new Client(socket);  
+    console.log('UNIX Client connected.');
 
-//     const initMessage = encodeMessage(Codes.INITIALIZATION, "Connected.");
-//     socket.write(initMessage);
+    const initMessage = encodeMessage(Codes.INITIALIZATION, "Connected.");
+    socket.write(initMessage);
 
-//     socket.on('data', data => processClientData(client, data, clientRegistry, gameSessions));
+    socket.on('data', data => processClientData(client, data, clientRegistry, gameSessions));
 
-//     socket.on('close', () => {
-//         if (client.id) {
-//             console.log(`UNIX Connection closed. Removing client: ${client.id}`);
-//             clientRegistry.delete(client.id);
-//             client.disconnect();
-//         }
-//     });
+    socket.on('close', () => {
+        if (client.id) {
+            console.log(`UNIX Connection closed. Removing client: ${client.id}`);
+            clientRegistry.delete(client.id);
+            client.disconnect();
+        }
+    });
 
-//     socket.on('error', (err) => {
-//         console.error('UNIX Socket error:', err);
-//         socket.destroy();
-//     });
-// });
+    socket.on('error', (err) => {
+        console.error('UNIX Socket error:', err);
+        socket.destroy();
+    });
+});
 
-// fs.unlink(UNIX_SOCKET_PATH, err => {
-//     if (err && err.code !== 'ENOENT') {
-//         console.error('Failed to remove existing Unix domain socket:', err);
-//         return;
-//     }
-//     unixServer.listen({ path: UNIX_SOCKET_PATH }, () => {
-//         console.log(`UNIX Server listening on Unix socket ${UNIX_SOCKET_PATH}`);
-//     });
-// });
+fs.unlink(UNIX_SOCKET_PATH, err => {
+    if (err && err.code !== 'ENOENT') {
+        console.error('Failed to remove existing Unix domain socket:', err);
+        return;
+    }
+    unixServer.listen({ path: UNIX_SOCKET_PATH }, () => {
+        console.log(`UNIX Server listening on Unix socket ${UNIX_SOCKET_PATH}`);
+    });
+});
 
 
 // Express Server Configuration
