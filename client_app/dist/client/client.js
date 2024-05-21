@@ -88,7 +88,6 @@ function askToChooseOpponent() {
 function handleIdList(payload) {
     const idList = payload.split(',').filter(id => id.trim() !== '' && id !== clientId);
     if (idList.length > 0) {
-        console.log('Received list of IDs:', idList.join(', '));
         promptForId(idList);
     }
     else {

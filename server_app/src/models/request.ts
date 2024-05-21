@@ -3,7 +3,7 @@ export class Request {
   payload: any;
 
   constructor(type: number, payload: any) {
-      this.type = type;
-      this.payload = payload;
+    this.type = type;
+    this.payload = payload;
   }
 }
