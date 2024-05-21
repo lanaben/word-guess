@@ -1,6 +1,12 @@
 ### ENV:
 
-To both client and server, add variable PASSWORD to .env.
+To both the client and server, add a variable PASSWORD to .env.
+
+Example .env file:
+
+```makefile
+PASSWORD=password
+```
 
 ### INSTALLATION, BUILDING, STARTING THE APP:
 
