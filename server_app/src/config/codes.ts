@@ -15,6 +15,5 @@ export enum Codes {
   HINT = 14,
   HINT_SENT = 15,
   HINT_RECEIVED = 16,
-  GIVE_UP = 17,
-  PLAYER = 18
+  GIVE_UP = 17
 }
