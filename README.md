@@ -1,21 +1,27 @@
 ### ENV:
 
-To both client and server, add variable PASSWORD.
+To both client and server, add variable PASSWORD to .env.
 
-### INSTALLATION:
+### INSTALLATION, BUILDING, STARTING THE APP:
 
 #### Server:
 
 ```bash
+cd server_app
 npm i
-npx tsc
 npm run build
-node dist/server/server.js 
+npm run start
 ```
 
 #### Client:
+
 ```bash
+cd client_app
 npm i
-npx tsc
-node dist/client/client.js
+npm run build
+npm run start
 ```
+
+#### Website:
+
+Head to http://localhost:3001 to see games.
